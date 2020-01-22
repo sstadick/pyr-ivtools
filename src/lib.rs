@@ -1,42 +1,52 @@
 use ivtools::{Bits, Interval, IvStore, Lapper, ScAIList};
 use pyo3::prelude::*;
-use pyo3::types::PyList;
+use pyo3::types::{PyAny, PyList};
 // use pyo3::wrap_pyfunction;
 
-#[pyclass(module = "pyr_lapper")]
+#[pyclass]
 struct PyrInterval {
-    iv: Interval<PyObject>,
+    #[pyo3(get, set)]
+    start: u32,
+    #[pyo3(get, set)]
+    stop: u32,
+    #[pyo3(get, set)]
+    val: String,
 }
 
 #[pymethods]
 impl PyrInterval {
     #[new]
-    fn new(start: u32, stop: u32, val: PyObject) -> Self {
+    fn new(start: u32, stop: u32, val: String) -> Self {
         PyrInterval {
-            iv: Interval {
-                start: start,
-                stop: stop,
-                val: val,
-            },
+            start: start,
+            stop: stop,
+            val: val,
         }
     }
 }
 
 #[pyclass]
 struct PyrLapper {
-    lapper: Lapper<PyObject>,
+    lapper: Lapper<String>,
 }
 
 #[pymethods]
 impl PyrLapper {
     #[new]
-    fn new(ivs: &PyList) -> Self {
+    fn new(ivs: Vec<&PyAny>) -> Self {
         PyrLapper {
             lapper: Lapper::new(
-                ivs.into_iter()
-                    .map(|iv| match iv.downcast_ref::<PyrInterval>() {
-                        Ok(iv) => iv.iv,
-                        _ => panic!(),
+                ivs.iter()
+                    .flat_map(|iv| {
+                        if let Ok(iv) = iv.cast_as::<PyrInterval>() {
+                            Some(Interval {
+                                start: iv.start,
+                                stop: iv.stop,
+                                val: iv.val.to_string(),
+                            })
+                        } else {
+                            None
+                        }
                     })
                     .collect(),
             ),
@@ -46,23 +56,16 @@ impl PyrLapper {
     fn find(&self, py: Python<'_>, start: u32, stop: u32) -> PyResult<Vec<PyrInterval>> {
         let mut result = vec![];
         for iv in self.lapper.find(start, stop) {
-            result.push(PyrInterval::new(iv.start, iv.stop, iv.val))
+            result.push(PyrInterval::new(iv.start, iv.stop, iv.val.clone()))
         }
         Ok(result)
     }
 }
 
-#[pyfunction]
-/// Formats the sum of two numbers as string
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
-}
-
 /// This module is a python module implemented in Rust.PartialEq
 #[pymodule]
-fn pyr_lapper(py: Python, m: &PyModule) -> PyResult<()> {
+fn pyr_lapper(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyrLapper>()?;
     m.add_class::<PyrInterval>()?;
-    // m.add_wrapped(wrap_pyfunction!(sum_as_string))?;
     Ok(())
 }
