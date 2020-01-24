@@ -31,32 +31,32 @@ impl PyrLapper {
         }
     }
 
-    fn find(&self, _py: Python<'_>, start: u32, stop: u32) -> PyResult<Vec<PyrInterval>> {
+    fn find(&self, _py: Python<'_>, start: u32, stop: u32) -> PyResult<Vec<&PyrInterval>> {
         Ok(self
             .lapper
             .find(start, stop)
-            .map(|fiv| PyrInterval {
-                start: fiv.start(),
-                stop: fiv.stop(),
-                val: *fiv.val(),
-            })
+            // .map(|fiv| PyrInterval {
+            //     start: fiv.start(),
+            //     stop: fiv.stop(),
+            //     val: *fiv.val(),
+            // })
             .collect())
     }
 
-    fn intersect(&self, _py: Python<'_>, other: &Self) -> PyResult<Vec<PyrInterval>> {
+    fn intersect<'a>(&'a self, _py: Python<'_>, other: &'a Self) -> PyResult<Vec<&'a PyrInterval>> {
         let mut cursor = 0;
         Ok(self
             .lapper
             .iter()
             .flat_map(|iv| {
-                let found: Vec<PyrInterval> = other
+                let found: Vec<&PyrInterval> = other
                     .lapper
                     .seek(iv.start(), iv.stop(), &mut cursor)
-                    .map(|fiv| PyrInterval {
-                        start: fiv.start(),
-                        stop: fiv.stop(),
-                        val: *fiv.val(),
-                    })
+                    // .map(|fiv| PyrInterval {
+                    //     start: fiv.start(),
+                    //     stop: fiv.stop(),
+                    //     val: *fiv.val(),
+                    // })
                     .collect();
                 found
             })
